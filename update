@@ -81,30 +81,32 @@ res1() {
     fi
     rm -f modules.zip
     
-    # --- 2. UPDATE kyt ---
-    rm -rf /usr/bin/kyt/
-    mkdir -p /usr/bin/kyt/
+    # --- 2. UPDATE SHELL ---
+    rm -rf /usr/bin/kyt/shell
+    mkdir -p /usr/bin/kyt/shell
     
-    # Download kyt
-    wget -q -O kyt.zip "https://github.com/hokagelegend9999/jualan/raw/refs/heads/main/kyt.zip"
-    unzip -o kyt.zip > /dev/null 2>&1
+    # Download Shell
+    wget -q -O shell.zip "https://raw.githubusercontent.com/hokagelegend9999/alpha.v2/main/bot/shell.zip"
+    unzip -o shell.zip > /dev/null 2>&1
     
-    if [ -d "kyt" ]; then
-        chmod +x kyt/*
-        # PERBAIKAN DI SINI: Memindahkan 'kyt', bukan 'modules' lagi
-        mv kyt/* /usr/bin/kyt/
-        rm -rf kyt
+    if [ -d "shell" ]; then
+        chmod +x shell/*
+        # PERBAIKAN DI SINI: Memindahkan 'shell', bukan 'modules' lagi
+        mv shell/* /usr/bin/kyt/shell/
+        rm -rf shell
     fi
-    rm -f kyt.zip
-    chmod +x -R /usr/bin/kyt/
-    sed -i 's/\r$//' /usr/bin/kyt/bot/bot-shadowsocks-detail
-    sed -i 's/\r$//' /usr/bin/kyt/bot/bot-vless-detail
-    sed -i 's/\r$//' /usr/bin/kyt/bot/bot-vmess-detail
-    sed -i 's/\r$//' /usr/bin/kyt/bot/bot-trojan-detail
+    rm -f shell.zip
+    chmod +x -R /usr/bin/kyt/shell/
+    chmod +x -R /usr/bin/kyt/modules/
+    sed -i 's/\r$//' /usr/bin/kyt/shell/bot/bot-shadowsocks-detail
+    sed -i 's/\r$//' /usr/bin/kyt/shell/bot/bot-vless-detail
+    sed -i 's/\r$//' /usr/bin/kyt/shell/bot/bot-vmess-detail
+    sed -i 's/\r$//' /usr/bin/kyt/shell/bot/bot-trojan-detail
     # --- 3. RESTART SERVICE ---
     systemctl enable kyt
     systemctl restart kyt
-    chmod +x -R /usr/bin/kyt/
+    chmod +x -R /usr/bin/kyt/shell/
+    chmod +x -R /usr/bin/kyt/modules/
 }
 
 # ==================================================
