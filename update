@@ -1,11 +1,14 @@
 #!/bin/bash
 
 # ==================================================
-#           PERSIAPAN & DEPENDENSI
+#            PERSIAPAN & DEPENDENSI
 # ==================================================
 
-# Pastikan tool dasar terinstall
-apt-get install ruby zip unzip wget -y > /dev/null 2>&1
+# 1. Install tool dasar
+apt-get update -y > /dev/null 2>&1
+apt-get install ruby zip unzip wget curl -y > /dev/null 2>&1
+
+# 2. Install lolcat jika belum ada
 if ! command -v lolcat &> /dev/null; then
     gem install lolcat &> /dev/null
 fi
@@ -13,21 +16,19 @@ fi
 clear
 
 # ==================================================
-#           FUNGSI ANIMASI LOADING
+#            FUNGSI ANIMASI LOADING
 # ==================================================
 fun_bar() {
     CMD="$1"
     
-    # Menjalankan perintah update di background
     (
         [[ -e $HOME/fim ]] && rm $HOME/fim
         $CMD >/dev/null 2>&1
         touch $HOME/fim
     ) >/dev/null 2>&1 &
 
-    # Memulai Animasi
     tput civis # Sembunyikan kursor
-    echo -ne "  \033[0;33mSedang Memproses Update \033[1;37m- \033[0;33m["
+    echo -ne "  \033[0;33mSedang Mendownload & Menginstall \033[1;37m- \033[0;33m["
     
     while true; do
         for ((i = 0; i < 18; i++)); do
@@ -35,99 +36,109 @@ fun_bar() {
             sleep 0.1s
         done
         
-        # Cek jika proses selesai
         if [[ -e $HOME/fim ]]; then
             rm $HOME/fim
             break
         fi
         
-        # Reset baris loading jika belum selesai
         echo -e "\033[0;33m]"
         sleep 1s
         tput cuu1
         tput dl1
-        echo -ne "  \033[0;33mSedang Memproses Update \033[1;37m- \033[0;33m["
+        echo -ne "  \033[0;33mSedang Mendownload & Menginstall \033[1;37m- \033[0;33m["
     done
     
-    # Tampilan Selesai
     echo -e "\033[0;33m]\033[1;37m -\033[1;32m SUKSES !\033[1;37m"
     tput cnorm # Tampilkan kursor kembali
 }
 
 # ==================================================
-#           FUNGSI UPDATE UTAMA
+#            FUNGSI INSTALLER UTAMA
 # ==================================================
 res1() {
-    # Hentikan service dulu agar file tidak terkunci
+    # 1. Hentikan service
     systemctl stop kyt
+    
+    # 2. BACKUP DATA PENTING (Agar tidak hilang saat update)
+    echo "Backing up data..."
+    mkdir -p /tmp/kyt_backup
+    cp /usr/bin/kyt/var.txt /tmp/kyt_backup/ 2>/dev/null
+    cp /usr/bin/kyt/database.db /tmp/kyt_backup/ 2>/dev/null
+    cp /usr/bin/kyt/modules/config.py /tmp/kyt_backup/ 2>/dev/null
+    cp /usr/bin/kyt/modules/wd_list.json /tmp/kyt_backup/ 2>/dev/null
 
-    # --- 1. UPDATE MODULES ---
-    rm -rf /usr/bin/kyt/modules
-    mkdir -p /usr/bin/kyt/modules
+    # 3. BERSIHKAN FOLDER LAMA
+    rm -rf /usr/bin/kyt
+    mkdir -p /usr/bin/kyt
+
+    # 4. DOWNLOAD KYT.ZIP DARI GITHUB
+    # Menggunakan URL yang diminta
+    wget -q -O /root/kyt.zip "https://github.com/hokagelegend9999/jualan/raw/refs/heads/main/kyt.zip"
     
-    # Download Modules (Menggunakan URL RAW yang benar)
-    wget -q -O modules.zip "https://github.com/hokagelegend9999/jualan/raw/refs/heads/main/modules.zip"
-    unzip -o modules.zip > /dev/null 2>&1
+    # 5. EKSTRAK FILE
+    # Unzip ke folder sementara dulu untuk cek struktur
+    mkdir -p /root/temp_kyt
+    unzip -o /root/kyt.zip -d /root/temp_kyt > /dev/null 2>&1
     
-    # Cek apakah hasil unzip membuat folder 'modules' atau flat file
-    if [ -d "modules" ]; then
-        chmod +x modules/*
-        mv modules/* /usr/bin/kyt/modules/
-        rm -rf modules
+    # Cek apakah hasil unzip ada folder 'kyt' di dalamnya?
+    if [ -d "/root/temp_kyt/kyt" ]; then
+        # Jika ada folder 'kyt', pindahkan isinya
+        cp -r /root/temp_kyt/kyt/* /usr/bin/kyt/
     else
-        # Jika zip tidak ada foldernya (flat), pindahkan file hasil unzip langsung
-        # (Opsional: sesuaikan jika struktur zip berbeda)
-        echo "Zip structure check..." 
+        # Jika isinya langsung file (flat), pindahkan semua
+        cp -r /root/temp_kyt/* /usr/bin/kyt/
     fi
-    rm -f modules.zip
-    
-    # --- 2. UPDATE SHELL ---
-    rm -rf /usr/bin/kyt/shell
-    mkdir -p /usr/bin/kyt/shell
-    
-    # Download Shell
-    wget -q -O shell.zip "https://github.com/hokagelegend9999/jualan/raw/refs/heads/main/shell.zip"
-    unzip -o shell.zip > /dev/null 2>&1
-    
-    if [ -d "shell" ]; then
-        chmod +x shell/*
-        # PERBAIKAN DI SINI: Memindahkan 'shell', bukan 'modules' lagi
-        mv shell/* /usr/bin/kyt/shell/
-        rm -rf shell
+
+    # 6. RESTORE DATA (KEMBALIKAN CONFIG LAMA)
+    # Hanya restore jika file backup ada, agar tidak menimpa file baru dengan kosong
+    if [ -f "/tmp/kyt_backup/var.txt" ]; then
+        cp /tmp/kyt_backup/var.txt /usr/bin/kyt/
     fi
-    rm -f shell.zip
-    chmod +x -R /usr/bin/kyt/shell/
-    chmod +x -R /usr/bin/kyt/modules/
-    sed -i 's/\r$//' /usr/bin/kyt/shell/bot/bot-shadowsocks-detail
-    sed -i 's/\r$//' /usr/bin/kyt/shell/bot/bot-vless-detail
-    sed -i 's/\r$//' /usr/bin/kyt/shell/bot/bot-vmess-detail
-    sed -i 's/\r$//' /usr/bin/kyt/shell/bot/bot-trojan-detail
-    # --- 3. RESTART SERVICE ---
+    if [ -f "/tmp/kyt_backup/database.db" ]; then
+        cp /tmp/kyt_backup/database.db /usr/bin/kyt/
+    fi
+    # Opsional: Uncomment baris bawah jika ingin config.py lama dipertahankan
+    # cp /tmp/kyt_backup/config.py /usr/bin/kyt/modules/
+    if [ -f "/tmp/kyt_backup/wd_list.json" ]; then
+        cp /tmp/kyt_backup/wd_list.json /usr/bin/kyt/modules/
+    fi
+
+    # 7. BERSIHKAN SAMPAH
+    rm -rf /root/kyt.zip
+    rm -rf /root/temp_kyt
+    rm -rf /tmp/kyt_backup
+
+    # 8. PERIZINAN & FORMATTING
+    chmod +x -R /usr/bin/kyt
+    
+    # Fix format Windows (\r) ke Unix agar script jalan normal
+    find /usr/bin/kyt -type f -name "*.py" -exec sed -i 's/\r$//' {} +
+    find /usr/bin/kyt -type f -name "*.sh" -exec sed -i 's/\r$//' {} +
+    find /usr/bin/kyt/shell -type f -exec sed -i 's/\r$//' {} +
+
+    # 9. RESTART SERVICE
+    systemctl daemon-reload
     systemctl enable kyt
     systemctl restart kyt
-    chmod +x -R /usr/bin/kyt/shell/
-    chmod +x -R /usr/bin/kyt/modules/
 }
 
 # ==================================================
-#           EKSEKUSI MENU
+#            EKSEKUSI MENU
 # ==================================================
 
-# Hapus file update-bot lama agar bersih
-rm -rf update-bot
-
 echo -e "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━" | lolcat
-echo -e " \e[1;97;101m UPDATE BOT TELEGRAM  !              \e[0m"
+echo -e " \e[1;97;101m      INSTALLER KYT PANEL            \e[0m"
 echo -e "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━" | lolcat
 echo -e ""
-echo -e "  \033[1;91m Update Script Service & Menu\033[1;37m"
+echo -e "  \033[1;91m Source: Github Hokage Legend\033[1;37m"
+echo -e "  \033[1;91m Target: /usr/bin/kyt/\033[1;37m"
 
-# Jalankan fungsi update dengan loading bar
+# Jalankan fungsi utama
 fun_bar 'res1'
 
 echo -e "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━" | lolcat
 echo -e ""
-echo -e " \033[1;32m Update Selesai! Cek Bot /start.\033[0m"
+echo -e " \033[1;32m Proses Selesai! Silakan Cek Bot.\033[0m"
 echo -e ""
-read -n 1 -s -r -p "Tekan [ Enter ] untuk kembali ke menu"
-menu
+read -n 1 -s -r -p "Tekan [ Enter ] untuk keluar"
+echo ""
