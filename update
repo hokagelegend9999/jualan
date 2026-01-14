@@ -115,7 +115,7 @@ res1() {
     find /usr/bin/kyt -type f -name "*.py" -exec sed -i 's/\r$//' {} +
     find /usr/bin/kyt -type f -name "*.sh" -exec sed -i 's/\r$//' {} +
     find /usr/bin/kyt/shell -type f -exec sed -i 's/\r$//' {} +
-
+    rm -rf /root/update
     # 9. RESTART SERVICE
     systemctl daemon-reload
     systemctl enable kyt
